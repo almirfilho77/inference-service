@@ -3,11 +3,23 @@ package main
 import (
 	"log"
 
-	"inference-service/server"
 	"inference-service/inference"
+	"inference-service/server"
 )
 
+/*
+API design
 
+-- GET --
+/inference	: get the list of inferences already performed, returning a json with the image name, size and format
+/inference/:id	: get the result of an inference by its ID, returning an image
+
+-- POST --
+/inference 	: send an image for inference
+
+-- DELETE --
+/inference/:id	: delete an inference result
+*/
 
 func main() {
 	// Init logger
@@ -19,7 +31,8 @@ func main() {
 
 	// Init server
 	log.Print("Init server\n")
-	server.Init(":8080", nil, 10, 10, 1 << 20)
+	// server.Init(":8080", nil, 10, 10, 1 << 20)
+	server.InitWithGin()
 
 	// Listen to requests from RESTful endpoint
 	// Process request and send response back

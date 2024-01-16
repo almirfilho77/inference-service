@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"image"
 	"log"
-	"strings"
 	"os"
+	"strings"
 
 	// Package image/jpeg is not used explicitly in the code below,
 	// but is imported for its initialization side-effect, which allows
@@ -16,6 +16,39 @@ import (
 	// _ "image/png"
 	_ "image/jpeg"
 )
+
+type Inference struct {
+	ID		string	`json:"id"`
+	Name 	string 	`json:"name"`
+	Size 	int64 	`json:"size"`
+}
+
+// Holds the informations to be serialized in the JSON
+var Inferences []Inference
+
+// Holds the {ID:path} for the inferences
+var inferenceMap map[string]string
+
+func GetInferences() []Inference {
+	return Inferences
+}
+
+func GetInference(id string) string {
+	return inferenceMap[id]
+}
+
+//func RunInference(img image.Image, info Inference) image.Image
+func RunInference(info Inference) {
+	Inferences = append(Inferences, info)
+	log.Println("Add new inference")
+	for _, inf := range Inferences {
+		log.Println("Inferences")
+		log.Printf("ID : %s", inf.ID)
+		log.Printf("Name : %s", inf.Name)
+		log.Printf("Size : %d", inf.Size)
+	}
+}
+
 
 func PrintHistogram(img image.Image) {
 	// Calculate a 16-bin histogram for m's red, green, blue and alpha components.
@@ -54,7 +87,7 @@ func LoadImage(filepath string) {
 	PrintHistogram(img)
 }
 
-func LoadImageFromData(data string) {
+func LoadImageFromData(data string) (image.Image, string) {
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(data))
 	img, formatName, err := image.Decode(reader)
 	if err != nil {
@@ -62,4 +95,5 @@ func LoadImageFromData(data string) {
 	}
 	log.Printf("The image format is [%s]", formatName)
 	PrintHistogram(img)
+	return img,formatName
 }
