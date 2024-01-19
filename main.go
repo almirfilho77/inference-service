@@ -27,7 +27,7 @@ func main() {
 	log.SetFlags(15)
 
 	// Load YOLO model
-	inference.LoadImageFromData(data)
+	inference.InitModel()
 
 	// Init server
 	log.Print("Init server\n")

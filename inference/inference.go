@@ -1,12 +1,13 @@
 package inference
 
 import (
-	"encoding/base64"
-	"fmt"
+	"image/jpeg"
 	"image"
+	"image/color"
+	"image/draw"
 	"log"
 	"os"
-	"strings"
+	"path/filepath"
 
 	// Package image/jpeg is not used explicitly in the code below,
 	// but is imported for its initialization side-effect, which allows
@@ -14,13 +15,12 @@ import (
 	// two lines to also understand GIF and PNG images:
 	// _ "image/gif"
 	// _ "image/png"
-	_ "image/jpeg"
 )
 
 type Inference struct {
-	ID		string	`json:"id"`
-	Name 	string 	`json:"name"`
-	Size 	int64 	`json:"size"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
 }
 
 // Holds the informations to be serialized in the JSON
@@ -37,8 +37,17 @@ func GetInference(id string) string {
 	return inferenceMap[id]
 }
 
-//func RunInference(img image.Image, info Inference) image.Image
-func RunInference(info Inference) {
+// TODO: separate the responsibilities of this package with maybe an image_util package
+func RunInference(img image.Image, info Inference) string {
+	// Modify the uploaded image to see if it works
+	pink := color.RGBA{255, 0, 255, 255}
+	imgBounds := img.Bounds()
+	tempMaxX := 1930 - 1082
+	tempMaxY := 1296 - 188
+	tempImage := image.NewRGBA(image.Rect(0, 0, tempMaxX, tempMaxY))
+	draw.Draw(tempImage, imgBounds, img, image.Point{1082, 188}, draw.Src)
+	drawBoundingBox(tempImage, pink, image.Rect(tempMaxX/2, tempMaxY/2, 100, 100))
+
 	Inferences = append(Inferences, info)
 	log.Println("Add new inference")
 	for _, inf := range Inferences {
@@ -47,53 +56,53 @@ func RunInference(info Inference) {
 		log.Printf("Name : %s", inf.Name)
 		log.Printf("Size : %d", inf.Size)
 	}
+	inferenceMap[info.ID] = filepath.Join(".", "inferences", info.Name+".jpeg")
+	writeToFile(tempImage, inferenceMap[info.ID])
+	return inferenceMap[info.ID]
 }
 
+func drawBoundingBox(img draw.Image, color color.Color, rect image.Rectangle) {
+	minX := rect.Min.X
+	minY := rect.Min.Y
+	maxX := rect.Max.X
+	maxY := rect.Max.Y
 
-func PrintHistogram(img image.Image) {
-	// Calculate a 16-bin histogram for m's red, green, blue and alpha components.
-	//
-	// An image's bounds do not necessarily start at (0, 0), so the two loops start
-	// at bounds.Min.Y and bounds.Min.X. Looping over Y first and X second is more
-	// likely to result in better memory access patterns than X first and Y second.
-	bounds := img.Bounds()
-	var histogram [16][4]int
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := img.At(x, y).RGBA()
-			// A color's RGBA method returns values in the range [0, 65535].
-			// Shifting by 12 reduces this to the range [0, 15].
-			histogram[r>>12][0]++
-			histogram[g>>12][1]++
-			histogram[b>>12][2]++
-			histogram[a>>12][3]++
+	for i := minX; i < maxX; i++ {
+		img.Set(i, minY, color)
+		img.Set(i, maxY, color)
+	}
+
+	for j := minY; j < maxY; j++ {
+		img.Set(minX, j, color)
+		img.Set(maxX, j, color)
+	}
+}
+
+// TODO: stablish the point where the path will be absolute (why from this point only??)
+func writeToFile(img draw.Image, filePath string) {
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		panic(err)
+	}
+	
+	absDirPath := filepath.Dir(absFilePath)
+	if _, err := os.Stat(absDirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(absDirPath, 0666)
+		if err != nil {
+			panic(err)
 		}
 	}
-	fmt.Printf("%-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
-	for i, x := range histogram {
-		fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
+
+	outputFile, err := os.Create(absFilePath)
+	if err != nil {
+		panic(err)
 	}
+	defer outputFile.Close()
+	opt := jpeg.Options{Quality: 100}
+	jpeg.Encode(outputFile, img, &opt)
 }
 
-func LoadImage(filepath string) {
-	// Decode the JPEG data. If reading from file, create a reader
-	reader, err := os.Open(filepath)
-	if err != nil {
-	    log.Fatal(err)
-	}
-	defer reader.Close()
-	img, formatName, err := image.Decode(reader)
-	log.Printf("The image format is [%s]", formatName)
-	PrintHistogram(img)
-}
-
-func LoadImageFromData(data string) (image.Image, string) {
-	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(data))
-	img, formatName, err := image.Decode(reader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("The image format is [%s]", formatName)
-	PrintHistogram(img)
-	return img,formatName
+func InitModel() error {
+	inferenceMap = make(map[string]string)
+	return nil
 }
