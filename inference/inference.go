@@ -13,7 +13,7 @@ import (
 	"runtime"
 
 	"github.com/nfnt/resize" //Copyright (c) 2012, Jan Schlicht <jan.schlicht@gmail.com>
-	ort "github.com/yalue/onnxruntime_go"
+	ort "github.com/yalue/onnxruntime_go" //Copyright (c) 2023 Nathan Otterness
 )
 
 // IMPORTANT:
@@ -37,6 +37,9 @@ type BoundingBox struct {
 
 const probabilityThreshold = float32(0.5)
 
+// Bounding Box color definitions
+var boundingBoxColorPink = color.RGBA{255, 0, 255, 255}
+
 // Holds the informations to be serialized in the JSON
 var Inferences []Inference
 
@@ -51,10 +54,9 @@ func GetInference(id string) string {
 	return inferenceMap[id]
 }
 
-// TODO: Update the inferences struct that the client can HTTP GET
 func RunObjectDetection(imgBuffer io.Reader, inferenceInfo Inference) []BoundingBox {
 	// read the io.Reader
-	inputImg, _, err := image.Decode(imgBuffer)
+	inputImg, formatName, err := image.Decode(imgBuffer)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,14 +75,12 @@ func RunObjectDetection(imgBuffer io.Reader, inferenceInfo Inference) []Bounding
 	originalHeight := int64(inputImg.Bounds().Size().Y)
 	boundingBoxResults := processOutput(outputData, originalWidth, originalHeight)
 
-	// TODO: draw bounding boxes
-
-	// TODO: Think if it is necessary to return as []byte or struct is fine
-	// build json with BB info
-	// boundingBoxJson, err := json.Marshal(boundingBoxResults)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// draw bounding boxes
+	// TODO: start a go coroutine to draw bounding boxes since the image is not going to be returned via http
+	imgWithBBs := drawBoundingBox(inputImg, boundingBoxColorPink, boundingBoxResults)
+	imgWithBBsPath := filepath.Join(".", "inferences", inferenceInfo.Name + "." + formatName)
+	writeToFile(imgWithBBs, imgWithBBsPath)
+	inferenceMap[inferenceInfo.ID] = imgWithBBsPath
 
 	return boundingBoxResults
 }
@@ -109,11 +109,13 @@ func convertImageToFloat32Array(inputImg image.Image, width int, height int) []f
 }
 
 func getOutputFromModel(inputArray []float32) []float32 {
-	// Initialize a model
-	ort.SetSharedLibraryPath(getSharedLibPath())
 	err := ort.InitializeEnvironment()
 	if err != nil {
-		log.Fatal(err)
+		ort.SetSharedLibraryPath(getSharedLibPath())
+		err = ort.InitializeEnvironment()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	defer ort.DestroyEnvironment()
 
@@ -181,63 +183,64 @@ func processOutput(inferenceResults []float32, width int64, height int64) []Boun
 		currentBoundingBox.print()
 		resultingBoundingBoxes = append(resultingBoundingBoxes, currentBoundingBox)
 	}
+	// filteredResults := supressNonMaximum(resultingBoundingBoxes)
 
 	return resultingBoundingBoxes
 }
 
-func InitModel() error {
-	inferenceMap = make(map[string]string)
-	return nil
+// func supressNonMaximum(unfilteredBoundingBoxes []BoundingBox) []BoundingBox {
+// 	filteredBoundingBoxes := []BoundingBox{}
+
+// 	for _, bb := range unfilteredBoundingBoxes {
+		
+// 	}
+
+// 	return filteredBoundingBoxes
+// }
+
+func (bb BoundingBox) print() {
+	log.Println("\ncx: ", bb.Center_x, "\ncy: ", bb.Center_y, "\nw: ", bb.Width, "\nh: ", bb.Height, "\nprobability: ", bb.Probability, "\nclass: ", bb.Class)
 }
 
-// TODO: separate the responsibilities of this package with maybe an image_util package
-func RunInference(img image.Image, info Inference) string {
-	// Modify the uploaded image to see if it works
-	pink := color.RGBA{255, 0, 255, 255}
-	imgBounds := img.Bounds()
-	tempMaxX := 1930 - 1082
-	tempMaxY := 1296 - 188
-	tempImage := image.NewRGBA(image.Rect(0, 0, tempMaxX, tempMaxY))
-	draw.Draw(tempImage, imgBounds, img, image.Point{1082, 188}, draw.Src)
-	drawBoundingBox(tempImage, pink, image.Rect(tempMaxX/2, tempMaxY/2, 100, 100))
-
-	Inferences = append(Inferences, info)
-	log.Println("Add new inference")
-	for _, inf := range Inferences {
-		log.Println("Inferences")
-		log.Printf("ID : %s", inf.ID)
-		log.Printf("Name : %s", inf.Name)
-		log.Printf("Size : %d", inf.Size)
+func printBoundingBoxSlice(bbSlice []BoundingBox) {
+	log.Println("Bounding box slice printing...")
+	for _, bb := range bbSlice {
+		bb.print()
 	}
-	inferenceMap[info.ID] = filepath.Join(".", "inferences", info.Name+".jpeg")
-	writeToFile(tempImage, inferenceMap[info.ID])
-	return inferenceMap[info.ID]
 }
 
-func drawBoundingBox(img draw.Image, color color.Color, rect image.Rectangle) {
-	minX := rect.Min.X
-	minY := rect.Min.Y
-	maxX := rect.Max.X
-	maxY := rect.Max.Y
-
-	for i := minX; i < maxX; i++ {
-		img.Set(i, minY, color)
-		img.Set(i, maxY, color)
+func drawBoundingBox(inputImg image.Image, color color.Color, boundingBoxes []BoundingBox) image.Image {
+	// printBoundingBoxSlice(boundingBoxes)
+	originalWidth := int64(inputImg.Bounds().Size().X)
+	originalHeight := int64(inputImg.Bounds().Size().Y)
+	resultImage := image.NewRGBA(image.Rect(0, 0, int(originalWidth), int(originalHeight)))
+	draw.Draw(resultImage, inputImg.Bounds(), inputImg, image.Point{}, draw.Src)
+	for _, bb := range boundingBoxes {
+		minX := int(bb.Center_x - bb.Width/2)
+		minY := int(bb.Center_y - bb.Height/2)
+		maxX := int(bb.Center_x + bb.Width/2)
+		maxY := int(bb.Center_y + bb.Height/2)
+		
+		for i := minX; i < maxX; i++ {
+			resultImage.Set(i, minY, color)
+			resultImage.Set(i, maxY, color)
+		}
+		
+		for j := minY; j < maxY; j++ {
+			resultImage.Set(minX, j, color)
+			resultImage.Set(maxX, j, color)
+		}
 	}
-
-	for j := minY; j < maxY; j++ {
-		img.Set(minX, j, color)
-		img.Set(maxX, j, color)
-	}
+	return resultImage
 }
 
 // TODO: stablish the point where the path will be absolute (why from this point only??)
-func writeToFile(img draw.Image, filePath string) {
+func writeToFile(img image.Image, filePath string) {
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		panic(err)
 	}
-
+	
 	absDirPath := filepath.Dir(absFilePath)
 	if _, err := os.Stat(absDirPath); os.IsNotExist(err) {
 		err := os.MkdirAll(absDirPath, 0666)
@@ -245,20 +248,19 @@ func writeToFile(img draw.Image, filePath string) {
 			panic(err)
 		}
 	}
-
+	
 	outputFile, err := os.Create(absFilePath)
 	if err != nil {
 		panic(err)
 	}
 	defer outputFile.Close()
+	
+	// TODO: implement logic to manipulate different image formats and base64 encoding
 	opt := jpeg.Options{Quality: 100}
 	jpeg.Encode(outputFile, img, &opt)
 }
 
-func (bb BoundingBox) print() {
-	log.Println("\ncx: ", bb.Center_x, "\ncy: ", bb.Center_y, "\nw: ", bb.Width, "\nh: ", bb.Height, "\nprobability: ", bb.Probability, "\nclass: ", bb.Class)
-}
-
+// TODO: Get environment path variable pointing to the DLL and put this in the description
 func getSharedLibPath() string {
 	if runtime.GOOS == "windows" {
 		if runtime.GOARCH == "amd64" {
@@ -277,6 +279,12 @@ func getSharedLibPath() string {
 		return "../third_party/onnxruntime.so"
 	}
 	panic("Unable to find a version of the onnxruntime library supporting this system.")
+}
+
+// TODO: think if this is necessary and/or can be moved to somewhere else
+func InitModel() error {
+	inferenceMap = make(map[string]string)
+	return nil
 }
 
 // Array of YOLOv8 class labels

@@ -16,6 +16,7 @@ func getInferences(c *gin.Context) {
 }
 
 // TODO: implement logic to manipulate different image formats and base64 encoding
+// TODO: implement timer to figure out the running time of this core function
 func postDetectObjects(c *gin.Context) {
 	var newInferenceInfo inference.Inference
 	newInferenceInfo.ID = uuid.NewString()

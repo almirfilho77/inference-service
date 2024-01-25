@@ -1,0 +1,140 @@
+Bounding box slice printing...
+
+// --------------------- TIE --------------------- //
+
+cx:  1413
+cy:  1869
+w:  359
+h:  809
+probability:  0.5549371
+class:  tie
+
+cx:  1416
+cy:  1861
+w:  360
+h:  773
+probability:  0.68522644
+class:  tie
+
+cx:  1412
+cy:  1861
+w:  355
+h:  780
+probability:  0.6195018
+class:  tie
+
+cx:  1411
+cy:  1855
+w:  346
+h:  787
+probability:  0.8517355
+class:  tie
+
+cx:  1411
+cy:  1855
+w:  350
+h:  787
+probability:  0.90267235
+class:  tie
+
+cx:  1414
+cy:  1855
+w:  348
+h:  788
+probability:  0.8570208
+class:  tie
+
+cx:  1415
+cy:  1855
+w:  347
+h:  788
+probability:  0.87222767
+class:  tie
+
+cx:  1413
+cy:  1856
+w:  350
+h:  787
+probability:  0.8825737
+class:  tie
+
+cx:  1414
+cy:  1856
+w:  347
+h:  787
+probability:  0.87884337
+class:  tie
+
+cx:  1411
+cy:  1856
+w:  356
+h:  788
+probability:  0.88804257
+class:  tie
+
+
+
+// --------------------- PERSON --------------------- //
+
+cx:  1491
+cy:  1222
+w:  2130
+h:  2037
+probability:  0.76467025
+class:  person
+
+cx:  1502
+cy:  1223
+w:  2194
+h:  2038
+probability:  0.7721567
+class:  person
+
+cx:  1539
+cy:  1225
+w:  2137
+h:  2037
+probability:  0.77959293
+class:  person
+
+cx:  1526
+cy:  1228
+w:  2079
+h:  2033
+probability:  0.8568133
+class:  person
+
+cx:  1534
+cy:  1227
+w:  2162
+h:  2031
+probability:  0.8447195
+class:  person
+
+cx:  1553
+cy:  1229
+w:  2162
+h:  2033
+probability:  0.84403086
+class:  person
+
+cx:  1543
+cy:  1220
+w:  2058
+h:  2046
+probability:  0.89371616
+class:  person
+
+cx:  1551
+cy:  1219
+w:  2146
+h:  2049
+probability:  0.8799404
+class:  person
+
+cx:  1576
+cy:  1222
+w:  2166
+h:  2044
+probability:  0.88778424
+class:  person
