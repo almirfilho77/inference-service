@@ -17,6 +17,8 @@ func getInferences(c *gin.Context) {
 
 // TODO: implement logic to manipulate different image formats and base64 encoding
 // TODO: implement timer to figure out the running time of this core function
+// TODO: add header to get raw results (without non-maximum suppresion)
+// TODO: add header to set probability threshold to ignore object
 func postDetectObjects(c *gin.Context) {
 	var newInferenceInfo inference.Inference
 	newInferenceInfo.ID = uuid.NewString()
@@ -38,17 +40,17 @@ func postDetectObjects(c *gin.Context) {
 	newInferenceInfo.Name = imgName
 	log.Printf("Image name: %s", imgName)
 
-	boundingBoxJson:= inference.RunObjectDetection(imgFile, newInferenceInfo)
-
-	c.JSON(http.StatusOK, boundingBoxJson)
-	// c.Writer.Header().Set("Content-Type", "image/jpeg")
-	// c.Writer.Write(outputImg)
+	boundingBoxJson, err:= inference.RunObjectDetection(imgFile, newInferenceInfo)
+	if err != nil {
+		c.JSON(http.StatusUnsupportedMediaType, nil)
+	} else {
+		c.JSON(http.StatusOK, boundingBoxJson)
+	}
 }
 
 func InitWithGin() {
 	router := gin.Default()
-	// Set a lower memory limit for multipart forms (default is 32 MiB)
-	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB :: Set a lower memory limit for multipart forms (default is 32 MiB)
 	router.GET("/inference", getInferences)
 	router.POST("/detect_objects", postDetectObjects)
 	router.Run("localhost:8080")
