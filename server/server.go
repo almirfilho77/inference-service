@@ -1,12 +1,8 @@
 package server
 
 import (
-	"image"
-	_ "image/jpeg"
-	"io"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,50 +16,42 @@ func getInferences(c *gin.Context) {
 }
 
 // TODO: implement logic to manipulate different image formats and base64 encoding
-func postInference(c *gin.Context) {
-	var newInference inference.Inference
-	img, err := c.FormFile("image")
+// TODO: implement timer to figure out the running time of this core function
+// TODO: add header to get raw results (without non-maximum suppresion)
+// TODO: add header to set probability threshold to ignore object
+func postDetectObjects(c *gin.Context) {
+	var newInferenceInfo inference.Inference
+	newInferenceInfo.ID = uuid.NewString()
+
+	imgFileHeader, err := c.FormFile("image")
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Image filename: %s", img.Filename)
-	log.Printf("Image size: %d", img.Size)
+	newInferenceInfo.Size = imgFileHeader.Size
+	log.Printf("Image filename: %s", imgFileHeader.Filename)
+	log.Printf("Image size: %d", imgFileHeader.Size)
 
-	imgFile, err := img.Open()
+	imgFile, err := imgFileHeader.Open()
 	if err != nil {
 		log.Fatal(err)
 	}
-	forInferenceImage, imageFormat, err := image.Decode(imgFile)
-	log.Printf("Image format: %s", imageFormat)
 
-	name, _ := c.GetPostForm("name")
-	log.Printf("Image name: %s", name)
+	imgName, _ := c.GetPostForm("name")
+	newInferenceInfo.Name = imgName
+	log.Printf("Image name: %s", imgName)
 
-	newInference.ID = uuid.NewString()
-	newInference.Name = name
-	newInference.Size = img.Size
-
-	inferencedFilepath := inference.RunInference(forInferenceImage, newInference)
-	outputImgFile, err := os.Open(inferencedFilepath)
+	boundingBoxJson, err:= inference.RunObjectDetection(imgFile, newInferenceInfo)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusUnsupportedMediaType, nil)
+	} else {
+		c.JSON(http.StatusOK, boundingBoxJson)
 	}
-	defer outputImgFile.Close()
-
-	outputImg, err := io.ReadAll(outputImgFile)
-	if err != nil {
-		panic(err)
-	}
-
-	c.Writer.Header().Set("Content-Type", "image/jpeg")
-	c.Writer.Write(outputImg)
 }
 
 func InitWithGin() {
 	router := gin.Default()
-	// Set a lower memory limit for multipart forms (default is 32 MiB)
-	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB :: Set a lower memory limit for multipart forms (default is 32 MiB)
 	router.GET("/inference", getInferences)
-	router.POST("/inference", postInference)
+	router.POST("/detect_objects", postDetectObjects)
 	router.Run("localhost:8080")
 }
