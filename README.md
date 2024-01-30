@@ -15,6 +15,22 @@ You also need to provide the shared library file for onnxruntime ("onnxruntime.d
 
 :bangbang: The first one is recommended
 
+## USAGE
+
+When you build the executable, place the model file (for now, yolov8s.onnx) in the same folder.
+
+To execute the service, run the command:
+
+```console
+~$ ./inference-service --ip IP_NUMBER
+```
+
+```powershell
+PS > inference-service.exe --ip IP_ADDRESS
+```
+
+If no ip address is provided, it runs on localhost:8080.
+
 ## APIs
 
 ### GET
@@ -27,8 +43,8 @@ You also need to provide the shared library file for onnxruntime ("onnxruntime.d
 
         Request body "key":value to send:
 
-        * "image" : jpeg or png image file
-        * "name" : string with the name of the image (human friendly name or alias)
+        "image" : jpeg or png image file
+        "name" : string with the name of the image (human friendly name or alias)
 
 ## Contact
 

@@ -48,10 +48,10 @@ func postDetectObjects(c *gin.Context) {
 	}
 }
 
-func InitWithGin() {
+func InitWithGin(ipAddress string) {
 	router := gin.Default()
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB :: Set a lower memory limit for multipart forms (default is 32 MiB)
 	router.GET("/inference", getInferences)
 	router.POST("/detect_objects", postDetectObjects)
-	router.Run("localhost:8080")
+	router.Run(ipAddress)
 }
