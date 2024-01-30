@@ -109,13 +109,10 @@ func convertImageToFloat32Array(inputImg image.Image, width int, height int) []f
 }
 
 func getOutputFromModel(inputArray []float32) []float32 {
+	ort.SetSharedLibraryPath(getSharedLibPath())
 	err := ort.InitializeEnvironment()
 	if err != nil {
-		ort.SetSharedLibraryPath(getSharedLibPath())
-		err = ort.InitializeEnvironment()
-		if err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 	defer ort.DestroyEnvironment()
 
@@ -303,21 +300,26 @@ func writeToFile(img image.Image, filePath string) {
 
 // TODO: Get environment path variable pointing to the DLL and put this in the description
 func getSharedLibPath() string {
+	sharedLibDirPath := os.Getenv("ONNXRUNTIME_SHARED_LIBRARY_PATH")
+	if len(sharedLibDirPath) == 0 {
+		sharedLibDirPath = "../third_party/onnxruntime"
+	}
+
 	if runtime.GOOS == "windows" {
 		if runtime.GOARCH == "amd64" {
-			return "../third_party/onnxruntime/onnxruntime.dll"
+			return filepath.Join(sharedLibDirPath, "onnxruntime.dll")
 		}
 	}
 	if runtime.GOOS == "darwin" {
 		if runtime.GOARCH == "arm64" {
-			return "../third_party/onnxruntime_arm64.dylib"
+			return filepath.Join(sharedLibDirPath, "onnxruntime_arm64.dylib")
 		}
 	}
 	if runtime.GOOS == "linux" {
 		if runtime.GOARCH == "arm64" {
-			return "../third_party/onnxruntime_arm64.so"
+			return filepath.Join(sharedLibDirPath, "onnxruntime_arm64.so")
 		}
-		return "../third_party/onnxruntime.so"
+		return filepath.Join(sharedLibDirPath, "onnxruntime.so")
 	}
 	panic("Unable to find a version of the onnxruntime library supporting this system.")
 }
