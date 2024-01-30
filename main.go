@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"inference-service/inference"
 	"inference-service/server"
@@ -26,16 +27,20 @@ func main() {
 	log.SetPrefix("inference-service: ")
 	log.SetFlags(15)
 
+	commandLineArgs := os.Args[1:]
+	var ipAddress string
+	if len(commandLineArgs) >= 2 && commandLineArgs[1] == "--ip" {
+		ipAddress = string(commandLineArgs[2])
+	} else {
+		ipAddress = "localhost:8080"
+	}
+
 	// Load YOLO model
 	inference.InitModel()
 
 	// Init server
 	log.Print("Init server\n")
-	// server.Init(":8080", nil, 10, 10, 1 << 20)
-	server.InitWithGin()
-
-	// Listen to requests from RESTful endpoint
-	// Process request and send response back
+	server.InitWithGin(ipAddress)
 
 }
 

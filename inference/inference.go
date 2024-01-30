@@ -82,7 +82,6 @@ func RunObjectDetection(imgBuffer io.Reader, inferenceInfo Inference) ([]Boundin
 	Inferences = append(Inferences, inferenceInfo)
 
 	// draw bounding boxes
-	// TODO: start a go coroutine to draw bounding boxes since the image is not going to be returned via http
 	imgWithBBsPath := filepath.Join(".", "inferences", inferenceInfo.Name + "." + formatName)
 	go drawListOfBoundingBoxes(inputImg, imgWithBBsPath, boundingBoxColorPink, boundingBoxResults)
 	inferenceMap[inferenceInfo.ID] = imgWithBBsPath
@@ -298,7 +297,6 @@ func writeToFile(img image.Image, filePath string) {
 	jpeg.Encode(outputFile, img, &opt)
 }
 
-// TODO: Get environment path variable pointing to the DLL and put this in the description
 func getSharedLibPath() string {
 	sharedLibDirPath := os.Getenv("ONNXRUNTIME_SHARED_LIBRARY_PATH")
 	if len(sharedLibDirPath) == 0 {
